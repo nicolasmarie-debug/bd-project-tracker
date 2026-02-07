@@ -1995,8 +1995,9 @@
             const categoryTags = project.categories.map(catId => {
                 const cat = getCategoryById(catId);
                 if (!cat) return '';
-                const tagClass = `tag-${catId.replace(/[^a-z]/g, '')}`;
-                return `<span class="tag ${tagClass}">${cat.name}</span>`;
+                 // Use inline style with the category's actual color
+                const bgColor = cat.color + '20'; // Add transparency
+                 return `<span class="tag" style="background: ${bgColor}; color: ${cat.color}">${cat.name}</span>`;
             }).join('');
 
             const ownerAvatars = [];
@@ -2019,8 +2020,11 @@
                 <div class="project-card ${project.decisionRequired ? 'decision-required' : ''}"
                      draggable="true"
                      data-project-id="${project.id}"
+                     data-stage="${project.stage}"
                      ondragstart="handleDragStart(event)"
+                     ondragover="handleCardDragOver(event)"
                      ondragend="handleDragEnd(event)"
+                     ondrop="handleCardDrop(event, '${project.id}')"
                      onclick="openProjectModal('${project.id}')">
                     <div class="card-header">
                         <span class="card-title">${project.title}</span>
@@ -2087,6 +2091,52 @@
                 showToast(`Project moved to ${getStageById(stageId)?.name || stageId}`, 'success');
             }
         }
+            }
+        }
+
+        function handleCardDragOver(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const card = event.target.closest('.project-card');
+            if (card && card.dataset.projectId !== draggedProject) {
+                // Remove highlight from all cards
+                document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
+                card.classList.add('drag-over');
+            }
+        }
+
+        function handleCardDrop(event, targetProjectId) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            if (!draggedProject || draggedProject === targetProjectId) return;
+            
+            const draggedIdx = appState.projects.findIndex(p => p.id === draggedProject);
+            const targetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
+            
+            if (draggedIdx === -1 || targetIdx === -1) return;
+            
+            const draggedProj = appState.projects[draggedIdx];
+            const targetProj = appState.projects[targetIdx];
+            
+            // Update stage if moving to different column
+            draggedProj.stage = targetProj.stage;
+            
+            // Reorder: remove dragged and insert at target position
+            appState.projects.splice(draggedIdx, 1);
+            const newTargetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
+            appState.projects.splice(newTargetIdx, 0, draggedProj);
+            
+            saveData();
+            renderDashboard();
+            showToast('Project reordered', 'success');
+            
+            // Clear drag-over highlights
+            document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
+        }
+
+        // ============================================
+        // PROJECT MODAL
 
         // ============================================
         // PROJECT MODAL

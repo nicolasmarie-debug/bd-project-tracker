@@ -2105,41 +2105,43 @@
             }
         }
 
-                function handleCardDrop(event, targetProjectId) {
+                        function handleCardDrop(event, targetProjectId) {
             event.preventDefault();
             event.stopPropagation();
             
-            if (!draggedProject || draggedProject === targetProjectId) return;
+            if (!draggedProject || draggedProject === targetProjectId) {
+                document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
+                return;
+            }
             
-            const draggedProj = appState.projects.find(p => p.id === draggedProject);
-            const targetProj = appState.projects.find(p => p.id === targetProjectId);
+            // Find indices in the main array
+            const draggedIdx = appState.projects.findIndex(p => p.id === draggedProject);
+            const targetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
             
-            if (!draggedProj || !targetProj) return;
+            if (draggedIdx === -1 || targetIdx === -1) return;
             
-            // Update stage if moving to different column
+            // Get the dragged project
+            const draggedProj = appState.projects[draggedIdx];
+            const targetProj = appState.projects[targetIdx];
+            
+            // Update stage if different
             draggedProj.stage = targetProj.stage;
             
-            // Get all projects in the target stage, sorted by order
-            const stageProjects = appState.projects
-                .filter(p => p.stage === targetProj.stage && p.id !== draggedProject)
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
+            // Remove from old position
+            appState.projects.splice(draggedIdx, 1);
             
-            // Find position of target project
-            const targetIndex = stageProjects.findIndex(p => p.id === targetProjectId);
+            // Find the new target index (it may have shifted after removal)
+            const newTargetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
             
-            // Insert dragged project before target
-            stageProjects.splice(targetIndex, 0, draggedProj);
+            // Insert before the target
+            appState.projects.splice(newTargetIdx, 0, draggedProj);
             
-            // Update order for all projects in this stage
-            stageProjects.forEach((p, idx) => {
-                p.order = idx;
-            });
-            
+            // Save and render
             saveData();
             renderDashboard();
             showToast('Project reordered', 'success');
             
-            // Clear drag-over highlights
+            // Clear highlights
             document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
         }
 

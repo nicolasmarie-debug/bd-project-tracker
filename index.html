@@ -1966,7 +1966,9 @@
             const filteredProjects = getFilteredProjects();
 
             board.innerHTML = appState.config.stages.map(stage => {
-                const stageProjects = filteredProjects.filter(p => p.stage === stage.id);
+                                const stageProjects = filteredProjects
+                    .filter(p => p.stage === stage.id)
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
                 const columnClass = `column-${stage.id.replace(/[^a-z]/g, '')}`;
 
                 return `
@@ -2103,27 +2105,35 @@
             }
         }
 
-        function handleCardDrop(event, targetProjectId) {
+                function handleCardDrop(event, targetProjectId) {
             event.preventDefault();
             event.stopPropagation();
             
             if (!draggedProject || draggedProject === targetProjectId) return;
             
-            const draggedIdx = appState.projects.findIndex(p => p.id === draggedProject);
-            const targetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
+            const draggedProj = appState.projects.find(p => p.id === draggedProject);
+            const targetProj = appState.projects.find(p => p.id === targetProjectId);
             
-            if (draggedIdx === -1 || targetIdx === -1) return;
-            
-            const draggedProj = appState.projects[draggedIdx];
-            const targetProj = appState.projects[targetIdx];
+            if (!draggedProj || !targetProj) return;
             
             // Update stage if moving to different column
             draggedProj.stage = targetProj.stage;
             
-            // Reorder: remove dragged and insert at target position
-            appState.projects.splice(draggedIdx, 1);
-            const newTargetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
-            appState.projects.splice(newTargetIdx, 0, draggedProj);
+            // Get all projects in the target stage, sorted by order
+            const stageProjects = appState.projects
+                .filter(p => p.stage === targetProj.stage && p.id !== draggedProject)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            // Find position of target project
+            const targetIndex = stageProjects.findIndex(p => p.id === targetProjectId);
+            
+            // Insert dragged project before target
+            stageProjects.splice(targetIndex, 0, draggedProj);
+            
+            // Update order for all projects in this stage
+            stageProjects.forEach((p, idx) => {
+                p.order = idx;
+            });
             
             saveData();
             renderDashboard();

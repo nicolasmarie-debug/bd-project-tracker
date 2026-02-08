@@ -1267,13 +1267,26 @@
                                 <!-- Options rendered dynamically -->
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Support Owner</label>
+                                              <div class="form-group">
+                            <label class="form-label">Support Owner 1</label>
                             <select class="form-select" id="project-support">
                                 <option value="">Select support owner</option>
                                 <!-- Options rendered dynamically -->
                             </select>
                         </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Support Owner 2</label>
+                            <select class="form-select" id="project-support2">
+                                <option value="">Select support owner</option>
+                                <!-- Options rendered dynamically -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <!-- Empty placeholder for alignment -->
+                        </div>
+
                     </div>
 
                     <div class="form-group">
@@ -2043,6 +2056,8 @@
                  return `<span class="tag" style="background: ${bgColor}; color: ${cat.color}">${cat.name}</span>`;
             }).join('');
 
+                       const supportUser2 = getUserById(project.supportOwner2);
+
             const ownerAvatars = [];
             if (leadUser) {
                 ownerAvatars.push(`
@@ -2055,6 +2070,13 @@
                 ownerAvatars.push(`
                     <div class="owner-avatar support" style="background: ${supportUser.color}" title="${supportUser.name} (Support)">
                         ${getInitials(supportUser.name)}
+                    </div>
+                `);
+            }
+            if (supportUser2) {
+                ownerAvatars.push(`
+                    <div class="owner-avatar support" style="background: ${supportUser2.color}" title="${supportUser2.name} (Support)">
+                        ${getInitials(supportUser2.name)}
                     </div>
                 `);
             }
@@ -2146,50 +2168,38 @@
             }
         }
 
-                                function handleCardDrop(event, targetProjectId) {
+                                        function handleCardDrop(event, targetProjectId) {
             event.preventDefault();
             event.stopPropagation();
             
+            // Clear all highlights
+            document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
+            
             if (!draggedProject || draggedProject === targetProjectId) {
-                document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
                 return;
             }
             
-            // Find indices in the main array
-            const draggedIdx = appState.projects.findIndex(p => p.id === draggedProject);
-            const targetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
+            // Get the projects
+            const draggedProj = appState.projects.find(p => p.id === draggedProject);
+            const targetProj = appState.projects.find(p => p.id === targetProjectId);
             
-            if (draggedIdx === -1 || targetIdx === -1) return;
+            if (!draggedProj || !targetProj) return;
             
-            // Get the dragged project
-            const draggedProj = appState.projects[draggedIdx];
-            const targetProj = appState.projects[targetIdx];
-            
-            // Update stage if different
+            // Update stage if moving to different column
             draggedProj.stage = targetProj.stage;
             
-            // Remove from old position
-            appState.projects.splice(draggedIdx, 1);
+            // Remove dragged project from array
+            const draggedIndex = appState.projects.indexOf(draggedProj);
+            appState.projects.splice(draggedIndex, 1);
             
-            // Find the new target index (it may have shifted after removal)
-            let newTargetIdx = appState.projects.findIndex(p => p.id === targetProjectId);
-            
-            // If dragging from above to below, insert AFTER the target
-            // If dragging from below to above, insert BEFORE the target
-            if (draggedIdx < targetIdx) {
-                newTargetIdx = newTargetIdx + 1; // Insert after
-            }
-            
-            // Insert at the new position
-            appState.projects.splice(newTargetIdx, 0, draggedProj);
+            // Find target's new index and insert before it
+            const targetIndex = appState.projects.indexOf(targetProj);
+            appState.projects.splice(targetIndex, 0, draggedProj);
             
             // Save and render
             saveData();
             renderDashboard();
             showToast('Project reordered', 'success');
-            
-            // Clear highlights
-            document.querySelectorAll('.project-card').forEach(c => c.classList.remove('drag-over'));
         }
 
 
@@ -2220,13 +2230,16 @@
                 </label>
             `).join('');
 
-            // Populate owner selects
+                        // Populate owner selects
             const leadSelect = document.getElementById('project-lead');
             const supportSelect = document.getElementById('project-support');
+            const supportSelect2 = document.getElementById('project-support2');
             const userOptions = '<option value="">Select owner</option>' +
                 appState.config.users.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
             leadSelect.innerHTML = userOptions;
             supportSelect.innerHTML = userOptions;
+            supportSelect2.innerHTML = userOptions;
+
 
             if (projectId) {
                 // Edit mode
@@ -2240,6 +2253,7 @@
                 document.getElementById('project-impact').value = project.impact || '';
                 document.getElementById('project-lead').value = project.leadOwner || '';
                 document.getElementById('project-support').value = project.supportOwner || '';
+                document.getElementById('project-support2').value = project.supportOwner2 || '';
                 document.getElementById('project-notes').value = project.notes || '';
                 document.getElementById('project-start').value = project.startDate || '';
                 document.getElementById('project-target').value = project.targetDate || '';
@@ -2285,6 +2299,7 @@
                 impact: document.getElementById('project-impact').value.trim() || 'TBC',
                 leadOwner: document.getElementById('project-lead').value,
                 supportOwner: document.getElementById('project-support').value,
+                supportOwner2: document.getElementById('project-support2').value,
                 notes: document.getElementById('project-notes').value.trim(),
                 startDate: document.getElementById('project-start').value,
                 targetDate: document.getElementById('project-target').value,
